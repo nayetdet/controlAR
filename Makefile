@@ -1,29 +1,25 @@
-.PHONY: run build upload monitor reset clean preprocess-video
+.PHONY: run build upload monitor reset clean
 
+ENV ?= esp32dev
 BAUD_RATE ?= 115200
-PORT ?=
 
 run: upload monitor
 
 build:
-	pio run
+	pio run -e $(ENV)
 
 upload:
-	pio run -t upload
+	pio run -e $(ENV) -t upload
 
 monitor:
-	@if [ -n "$(PORT)" ]; then \
-		pio device monitor -b $(BAUD_RATE) -p $(PORT); \
-	else \
-		pio device monitor -b $(BAUD_RATE); \
-	fi
+	pio device monitor -b $(BAUD_RATE)
 
 reset:
-	pio run -t reset
+	pio run -e $(ENV) -t reset
 	$(MAKE) monitor
 
 clean:
-	pio run -t clean
+	pio run -e $(ENV) -t clean
 
 preprocess-video:
 	bash tools/preprocess_video.sh video.webm video.rgb565 audio.pcm

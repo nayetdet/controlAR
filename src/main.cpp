@@ -1,38 +1,36 @@
 #include <Arduino.h>
-#include <IRrecv.h>
-#include <IRsend.h>
-#include <IRutils.h>
+#include <IRremoteESP8266.h>
+#include <ir_Fujitsu.h>
 
-#define IR_SENSOR 4
-#define BUTTON 5
-#define IR_LED 18
+constexpr uint8_t IR_DATA = 4;
+constexpr uint8_t BUTTON = 5;
 
-IRrecv receiver(IR_SENSOR, 1024, 15, true);
-IRsend transmitter(IR_LED);
-
-decode_results decodedData;
-uint16_t rawCode[1024];
-uint16_t rawLength = 0;
+IRFujitsuAC airConditionerRemote(IR_DATA, ARRAH2E);
+bool airConditionerIsOn = false;
 
 void setup() {
-  pinMode(BUTTON, INPUT_PULLUP);
-  receiver.enableIRIn();
-  transmitter.begin();
+    pinMode(BUTTON, INPUT_PULLUP);
+    airConditionerRemote.begin();
+    airConditionerRemote.setModel(ARRAH2E);
+    airConditionerRemote.setMode(kFujitsuAcModeCool);
+    airConditionerRemote.setTemp(24);
+    airConditionerRemote.setFanSpeed(kFujitsuAcFanAuto);
+    airConditionerRemote.setSwing(kFujitsuAcSwingOff);
 }
 
 void loop() {
-  if (receiver.decode(&decodedData)) {
-    rawLength = min<uint16_t>(getCorrectedRawLength(&decodedData), 1024);
-    for (uint16_t i = 0; i < rawLength; i++)
-      rawCode[i] = decodedData.rawbuf[i + 1] * kRawTick;
-    receiver.resume();
-  }
+    if (digitalRead(BUTTON) == LOW) {
+        delay(50);
 
-  if (!digitalRead(BUTTON)) {
-    delay(50);
-    if (!digitalRead(BUTTON) && rawLength) {
-      transmitter.sendRaw(rawCode, rawLength, 38);
-      while (!digitalRead(BUTTON)) delay(1);
+        if (digitalRead(BUTTON) == LOW) {
+            airConditionerIsOn = !airConditionerIsOn;
+            airConditionerRemote.setPower(airConditionerIsOn);
+            airConditionerRemote.setCmd(airConditionerIsOn ? kFujitsuAcCmdTurnOn : kFujitsuAcCmdTurnOff);
+            airConditionerRemote.send();
+
+            while (digitalRead(BUTTON) == LOW) {
+                delay(1);
+            }
+        }
     }
-  }
 }
